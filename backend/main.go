@@ -48,17 +48,17 @@ func main() {
 
 	// Initialize services - Cloud Storage Only
 	storageService := services.NewStorageService(cfg.GCSBucket)
-	if !storageService.IsInitialized() {
-		log.Println("WARNING: Google Cloud Storage is not properly configured")
-		log.Println("Please ensure:")
-		log.Println("1. GCS_BUCKET environment variable is set")
-		log.Println("2. GOOGLE_APPLICATION_CREDENTIALS is set or you're running in a GCP environment")
-		log.Println("3. The service account has proper permissions")
-		log.Println("4. The bucket exists and is accessible")
-		log.Fatalf("Google Cloud Storage is required but not properly configured. Please set up GCS credentials and bucket.")
-	}
+	// if !storageService.IsInitialized() {
+	// 	log.Println("WARNING: Google Cloud Storage is not properly configured")
+	// 	log.Println("Please ensure:")
+	// 	log.Println("1. GCS_BUCKET environment variable is set")
+	// 	log.Println("2. GOOGLE_APPLICATION_CREDENTIALS is set or you're running in a GCP environment")
+	// 	log.Println("3. The service account has proper permissions")
+	// 	log.Println("4. The bucket exists and is accessible")
+	// 	log.Fatalf("Google Cloud Storage is required but not properly configured. Please set up GCS credentials and bucket.")
+	// }
 
-	log.Printf("Successfully initialized Google Cloud Storage with bucket: %s", cfg.GCSBucket)
+	// log.Printf("Successfully initialized Google Cloud Storage with bucket: %s", cfg.GCSBucket)
 
 	documentService := services.NewDocumentService(db, storageService)
 	aiService := services.NewAIService(cfg.GeminiAPIKey)
@@ -77,7 +77,7 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 	api.Use(middleware.AuthMiddleware(authClient))
 	api.Use(middleware.CORSMiddleware())
-	api.Use(middleware.RequestLoggerMiddleware)
+	// api.Use(middleware.RequestLoggerMiddleware)
 
 	// User routes
 	api.HandleFunc("/user/profile", h.GetUserProfile).Methods("GET")

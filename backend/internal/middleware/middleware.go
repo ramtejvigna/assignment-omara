@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	"log"
+	// "log"
 	"net/http"
 	"strings"
-	"time"
+	// "time"
 
 	"firebase.google.com/go/v4/auth"
 )
@@ -24,22 +24,22 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// RequestLoggerMiddleware logs method, path, status, and duration
-func RequestLoggerMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+// // RequestLoggerMiddleware logs method, path, status, and duration
+// func RequestLoggerMiddleware(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		start := time.Now()
 
-		// Wrap response writer to capture status code
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+// 		// Wrap response writer to capture status code
+// 		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
-		// Process request
-		next.ServeHTTP(rw, r)
+// 		// Process request
+// 		next.ServeHTTP(rw, r)
 
-		// Log request details
-		duration := time.Since(start)
-		log.Printf("%s %s -> %d (%v)", r.Method, r.RequestURI, rw.statusCode, duration)
-	})
-}
+// 		// Log request details
+// 		duration := time.Since(start)
+// 		log.Printf("%s %s -> %d (%v)", r.Method, r.RequestURI, rw.statusCode, duration)
+// 	})
+// }
 
 func AuthMiddleware(authClient *auth.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
