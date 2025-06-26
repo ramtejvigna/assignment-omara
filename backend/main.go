@@ -97,7 +97,7 @@ func main() {
 
 	// Setup CORS for public routes
 	corsHandler := gorilla.CORS(
-		gorilla.AllowedOrigins([]string{"http://localhost:3000", "https://your-frontend-domain.com"}),
+		gorilla.AllowedOrigins([]string{"http://localhost:3000", "https://assignment-omara.vercel.app"}),
 		gorilla.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
 		gorilla.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
 		gorilla.AllowCredentials(),
