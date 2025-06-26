@@ -118,12 +118,8 @@ func (ds *DocumentService) GetDocuments(ctx context.Context, userID string) ([]*
 		return nil, fmt.Errorf("userID cannot be empty")
 	}
 
-	query := `SELECT id, user_id, file_name, storage_path, 
-	          CASE 
-	            WHEN uploaded_at IS NULL THEN CURRENT_TIMESTAMP 
-	            ELSE uploaded_at 
-	          END as uploaded_at 
-	          FROM documents WHERE user_id = $1 ORDER BY uploaded_at DESC`
+	// Fixed SQL query formatting to prevent parameter mismatch issues
+	query := `SELECT id, user_id, file_name, storage_path, CASE WHEN uploaded_at IS NULL THEN CURRENT_TIMESTAMP ELSE uploaded_at END as uploaded_at FROM documents WHERE user_id = $1 ORDER BY uploaded_at DESC`
 	rows, err := ds.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query documents: %w", err)
@@ -146,12 +142,8 @@ func (ds *DocumentService) GetDocuments(ctx context.Context, userID string) ([]*
 }
 
 func (ds *DocumentService) GetDocument(ctx context.Context, docID, userID string) (*models.Document, error) {
-	query := `SELECT id, user_id, file_name, storage_path, 
-	          CASE 
-	            WHEN uploaded_at IS NULL THEN CURRENT_TIMESTAMP 
-	            ELSE uploaded_at 
-	          END as uploaded_at 
-	          FROM documents WHERE id = $1 AND user_id = $2`
+	// Fixed SQL query formatting to prevent parameter mismatch issues
+	query := `SELECT id, user_id, file_name, storage_path, CASE WHEN uploaded_at IS NULL THEN CURRENT_TIMESTAMP ELSE uploaded_at END as uploaded_at FROM documents WHERE id = $1 AND user_id = $2`
 	row := ds.db.QueryRowContext(ctx, query, docID, userID)
 
 	doc := &models.Document{}
@@ -203,8 +195,8 @@ func (ds *DocumentService) DeleteDocument(ctx context.Context, docID, userID str
 }
 
 func (ds *DocumentService) GetDocumentChunks(ctx context.Context, docID string) ([]*models.DocumentChunk, error) {
-	query := `SELECT id, document_id, chunk_index, content, embedding, created_at 
-	          FROM document_chunks WHERE document_id = $1 ORDER BY chunk_index`
+	// Fixed SQL query formatting to prevent parameter mismatch issues
+	query := `SELECT id, document_id, chunk_index, content, embedding, created_at FROM document_chunks WHERE document_id = $1 ORDER BY chunk_index`
 	rows, err := ds.db.QueryContext(ctx, query, docID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query document chunks: %w", err)

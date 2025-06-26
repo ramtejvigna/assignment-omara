@@ -45,9 +45,10 @@ func (h *Handlers) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user record (already ensured to exist by ensureAuthenticated)
+	// Ensure user exists in database (handles creation if needed)
 	user, err := h.getOrCreateUser(r.Context(), userID)
 	if err != nil {
+		fmt.Printf("Failed to get or create user profile for %s: %v\n", userID, err)
 		http.Error(w, "Failed to get user profile", http.StatusInternalServerError)
 		return
 	}
@@ -62,8 +63,17 @@ func (h *Handlers) GetDocuments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure user exists in database before fetching documents
+	_, err := h.getOrCreateUser(r.Context(), userID)
+	if err != nil {
+		fmt.Printf("Failed to ensure user exists before fetching documents for %s: %v\n", userID, err)
+		http.Error(w, "Failed to validate user", http.StatusInternalServerError)
+		return
+	}
+
 	documents, err := h.documentService.GetDocuments(r.Context(), userID)
 	if err != nil {
+		fmt.Printf("Failed to get documents for user %s: %v\n", userID, err)
 		http.Error(w, fmt.Sprintf("Failed to get documents: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -78,8 +88,16 @@ func (h *Handlers) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure user exists in database before allowing upload
+	_, err := h.getOrCreateUser(r.Context(), userID)
+	if err != nil {
+		fmt.Printf("Failed to ensure user exists before document upload for %s: %v\n", userID, err)
+		http.Error(w, "Failed to validate user", http.StatusInternalServerError)
+		return
+	}
+
 	// Parse multipart form
-	err := r.ParseMultipartForm(32 << 20) // 32MB max
+	err = r.ParseMultipartForm(32 << 20) // 32MB max
 	if err != nil {
 		http.Error(w, "Failed to parse form", http.StatusBadRequest)
 		return
@@ -98,8 +116,6 @@ func (h *Handlers) UploadDocument(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only PDF and TXT files are supported", http.StatusBadRequest)
 		return
 	}
-
-	// User already ensured to exist by ensureAuthenticated
 
 	// Create document
 	document, err := h.documentService.CreateDocument(r.Context(), userID, header.Filename, file)
@@ -206,11 +222,19 @@ func (h *Handlers) GetDocumentStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure user exists in database
+	_, err := h.getOrCreateUser(r.Context(), userID)
+	if err != nil {
+		fmt.Printf("Failed to ensure user exists for document status check %s: %v\n", userID, err)
+		http.Error(w, "Failed to validate user", http.StatusInternalServerError)
+		return
+	}
+
 	vars := mux.Vars(r)
 	documentID := vars["id"]
 
 	// Verify the user owns this document first
-	_, err := h.documentService.GetDocument(r.Context(), documentID, userID)
+	_, err = h.documentService.GetDocument(r.Context(), documentID, userID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "Document not found", http.StatusNotFound)
@@ -248,11 +272,20 @@ func (h *Handlers) GetChatHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Ensure user exists in database
+	_, err := h.getOrCreateUser(r.Context(), userID)
+	if err != nil {
+		fmt.Printf("Failed to ensure user exists for chat history %s: %v\n", userID, err)
+		http.Error(w, "Failed to validate user", http.StatusInternalServerError)
+		return
+	}
+
 	vars := mux.Vars(r)
 	documentID := vars["id"]
 
 	messages, err := h.chatService.GetChatHistory(r.Context(), documentID, userID)
 	if err != nil {
+		fmt.Printf("Failed to get chat history for user %s, document %s: %v\n", userID, documentID, err)
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "Document not found", http.StatusNotFound)
 		} else {
@@ -373,79 +406,84 @@ func (h *Handlers) getOrCreateUser(ctx context.Context, userID string) (*models.
 		return nil, fmt.Errorf("userID cannot be empty")
 	}
 
-	// Try to get existing user
+	// Try to get existing user first
 	query := `SELECT id, email, created_at FROM users WHERE id = $1`
 	row := h.db.QueryRowContext(ctx, query, userID)
 
 	user := &models.User{}
 	err := row.Scan(&user.ID, &user.Email, &user.CreatedAt)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			fmt.Printf("Error querying user %s: %v\n", userID, err)
-			return nil, fmt.Errorf("failed to query user: %w", err)
-		}
-
-		// User doesn't exist, get email from Firebase and create
-		fmt.Printf("User %s not found in database, creating new user\n", userID)
-		userRecord, err := h.authClient.GetUser(ctx, userID)
-		if err != nil {
-			fmt.Printf("Failed to get user %s from Firebase: %v\n", userID, err)
-			return nil, fmt.Errorf("failed to get user from Firebase: %w", err)
-		}
-
-		// Sanitize email - ensure it's valid
-		email := userRecord.Email
-		if email == "" {
-			email = "unknown@example.com"
-		}
-
-		// Check for suspicious content that might cause SQL parsing issues
-		if strings.Contains(email, ".pdf") || strings.Contains(email, "Resume") {
-			fmt.Printf("WARNING: Email contains suspicious content, sanitizing: '%s'\n", email)
-			email = "sanitized@example.com"
-		}
-
-		// Additional validation: ensure email doesn't contain special characters that could cause SQL issues
-		if strings.Contains(email, "'") || strings.Contains(email, "\"") || strings.Contains(email, ";") {
-			fmt.Printf("WARNING: Email contains potentially harmful characters, sanitizing: '%s'\n", email)
-			email = "sanitized@example.com"
-		}
-
-		fmt.Printf("Creating user with ID: %s, Email: %s\n", userID, email)
-
-		// Insert new user with explicit transaction and proper error handling
-		tx, err := h.db.BeginTx(ctx, nil)
-		if err != nil {
-			fmt.Printf("Failed to begin transaction: %v\n", err)
-			return nil, fmt.Errorf("failed to begin transaction: %w", err)
-		}
-		defer func() {
-			if p := recover(); p != nil {
-				tx.Rollback()
-				panic(p)
-			} else if err != nil {
-				tx.Rollback()
-			}
-		}()
-
-		insertQuery := `INSERT INTO users (id, email, created_at) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id, email, created_at`
-		row := tx.QueryRowContext(ctx, insertQuery, userID, email)
-
-		newUser := &models.User{}
-		err = row.Scan(&newUser.ID, &newUser.Email, &newUser.CreatedAt)
-		if err != nil {
-			fmt.Printf("Failed to create user %s in database: %v\n", userID, err)
-			return nil, fmt.Errorf("failed to create user: %w", err)
-		}
-
-		if err = tx.Commit(); err != nil {
-			fmt.Printf("Failed to commit user creation transaction: %v\n", err)
-			return nil, fmt.Errorf("failed to commit transaction: %w", err)
-		}
-
-		fmt.Printf("Successfully created user: %s\n", newUser.ID)
-		return newUser, nil
+	if err == nil {
+		// User exists, return it
+		return user, nil
 	}
 
-	return user, nil
+	if err != sql.ErrNoRows {
+		// Handle timestamp parsing errors gracefully
+		if strings.Contains(err.Error(), "invalid timestamp") || strings.Contains(err.Error(), "time") {
+			fmt.Printf("Timestamp parsing error for user %s, attempting to fix: %v\n", userID, err)
+			// Try to fix timestamp issue by updating the record
+			fixQuery := `UPDATE users SET created_at = CURRENT_TIMESTAMP WHERE id = $1 AND (created_at IS NULL OR created_at = '')`
+			_, fixErr := h.db.ExecContext(ctx, fixQuery, userID)
+			if fixErr != nil {
+				fmt.Printf("Failed to fix timestamp for user %s: %v\n", userID, fixErr)
+			} else {
+				// Try to get the user again after fixing timestamp
+				row = h.db.QueryRowContext(ctx, query, userID)
+				err = row.Scan(&user.ID, &user.Email, &user.CreatedAt)
+				if err == nil {
+					fmt.Printf("Successfully fixed timestamp issue for user %s\n", userID)
+					return user, nil
+				}
+			}
+		}
+		fmt.Printf("Error querying user %s: %v\n", userID, err)
+		return nil, fmt.Errorf("failed to query user: %w", err)
+	}
+
+	// User doesn't exist, get email from Firebase and create
+	fmt.Printf("User %s not found in database, creating new user\n", userID)
+	userRecord, err := h.authClient.GetUser(ctx, userID)
+	if err != nil {
+		fmt.Printf("Failed to get user %s from Firebase: %v\n", userID, err)
+		return nil, fmt.Errorf("failed to get user from Firebase: %w", err)
+	}
+
+	// Sanitize email - ensure it's valid
+	email := userRecord.Email
+	if email == "" {
+		email = "unknown@example.com"
+	}
+
+	// Check for suspicious content that might cause SQL parsing issues
+	if strings.Contains(email, ".pdf") || strings.Contains(email, "Resume") {
+		fmt.Printf("WARNING: Email contains suspicious content, sanitizing: '%s'\n", email)
+		email = "sanitized@example.com"
+	}
+
+	// Additional validation: ensure email doesn't contain special characters that could cause SQL issues
+	if strings.Contains(email, "'") || strings.Contains(email, "\"") || strings.Contains(email, ";") {
+		fmt.Printf("WARNING: Email contains potentially harmful characters, sanitizing: '%s'\n", email)
+		email = "sanitized@example.com"
+	}
+
+	fmt.Printf("Creating user with ID: %s, Email: %s\n", userID, email)
+
+	// Use UPSERT (INSERT ... ON CONFLICT) to handle race conditions
+	upsertQuery := `INSERT INTO users (id, email, created_at) 
+                    VALUES ($1, $2, CURRENT_TIMESTAMP) 
+                    ON CONFLICT (id) DO UPDATE SET 
+                        email = EXCLUDED.email,
+                        created_at = COALESCE(users.created_at, CURRENT_TIMESTAMP)
+                    RETURNING id, email, created_at`
+
+	row = h.db.QueryRowContext(ctx, upsertQuery, userID, email)
+	newUser := &models.User{}
+	err = row.Scan(&newUser.ID, &newUser.Email, &newUser.CreatedAt)
+	if err != nil {
+		fmt.Printf("Failed to upsert user %s in database: %v\n", userID, err)
+		return nil, fmt.Errorf("failed to create or update user: %w", err)
+	}
+
+	fmt.Printf("Successfully upserted user: %s\n", newUser.ID)
+	return newUser, nil
 }

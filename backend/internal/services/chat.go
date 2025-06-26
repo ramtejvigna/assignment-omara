@@ -41,8 +41,8 @@ func (cs *ChatService) GetChatHistory(ctx context.Context, documentID, userID st
 		return nil, err
 	}
 
-	query := `SELECT id, document_id, user_id, message_type, message_content, timestamp 
-	          FROM chat_history WHERE document_id = $1 AND user_id = $2 ORDER BY timestamp ASC`
+	// Fixed SQL query formatting to prevent parameter mismatch issues
+	query := `SELECT id, document_id, user_id, message_type, message_content, timestamp FROM chat_history WHERE document_id = $1 AND user_id = $2 ORDER BY timestamp ASC`
 	rows, err := cs.db.QueryContext(ctx, query, documentID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query chat history: %w", err)
