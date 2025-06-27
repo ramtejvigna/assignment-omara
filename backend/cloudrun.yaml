@@ -11,10 +11,12 @@ spec:
         run.googleapis.com/execution-environment: gen2
         autoscaling.knative.dev/maxScale: "10"
         autoscaling.knative.dev/minScale: "0"
+        run.googleapis.com/startup-cpu-boost: "true"
     spec:
       containerConcurrency: 80
+      timeoutSeconds: 300
       containers:
-      - image: docker.io/your-docker-username/strategy-analyst-backend:latest
+      - image: docker.io/ramtejvigna/strategy-analyst-backend:latest
         ports:
         - containerPort: 8080
         env:
@@ -49,15 +51,27 @@ spec:
           requests:
             cpu: 100m
             memory: 256Mi
-        livenessProbe:
+        startupProbe:
           httpGet:
             path: /api/health
             port: 8080
           initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 30
           periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /api/health
             port: 8080
           initialDelaySeconds: 5
-          periodSeconds: 10 
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3 
