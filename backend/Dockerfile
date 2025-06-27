@@ -33,11 +33,8 @@ RUN adduser -D -s /bin/sh appuser
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
 
-# Copy Firebase credentials
-COPY --from=builder /app/firebase-credentials.json .
-
 # Set proper permissions
-RUN chmod +x main && chown appuser:appuser main firebase-credentials.json
+RUN chmod +x main && chown appuser:appuser main
 
 USER appuser
 

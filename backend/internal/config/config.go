@@ -1,13 +1,14 @@
 package config
 
 import (
-	"bufio"    // Reads .env line by line
+	"bufio" // Reads .env line by line
 	"context"
+	"fmt"
 	"os"
-	"strings"  // Used for string manipulation
+	"strings" // Used for string manipulation
 
-	firebase "firebase.google.com/go/v4"    // Official firebase go SDK
-	"google.golang.org/api/option"          // Used for setting up firebase options
+	firebase "firebase.google.com/go/v4" // Official firebase go SDK
+	"google.golang.org/api/option"       // Used for setting up firebase options
 )
 
 // Environment config structure to store configuration values
@@ -67,18 +68,40 @@ func loadEnvFile() {
 
 // Initialize Firebase app with credentials
 func InitFirebase(credentialsPath string) (*firebase.App, error) {
-	// Set up firebase options with credentials file
-	opt := option.WithCredentialsFile(credentialsPath)
+	ctx := context.Background()
+
+	// Check if we're in a local development environment with credentials file
+	if credentialsPath != "" {
+		if _, err := os.Stat(credentialsPath); err == nil {
+			// File exists, use it
+			opt := option.WithCredentialsFile(credentialsPath)
+			config := &firebase.Config{
+				ProjectID: getEnv("FIREBASE_PROJECT_ID", ""),
+			}
+
+			app, err := firebase.NewApp(ctx, config, opt)
+			if err != nil {
+				return nil, fmt.Errorf("failed to initialize Firebase with credentials file: %w", err)
+			}
+			return app, nil
+		}
+	}
+
+	// Try to initialize with default credentials (Cloud Run environment)
+	projectID := getEnv("FIREBASE_PROJECT_ID", "")
+	if projectID == "" {
+		return nil, fmt.Errorf("FIREBASE_PROJECT_ID environment variable is required")
+	}
+
 	config := &firebase.Config{
-		ProjectID: getEnv("FIREBASE_PROJECT_ID", ""),
+		ProjectID: projectID,
 	}
 
-	// Initialize firebase app with credentials
-	app, err := firebase.NewApp(context.Background(), config, opt)
+	// Use default credentials (works in Cloud Run with proper service account)
+	app, err := firebase.NewApp(ctx, config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to initialize Firebase with default credentials: %w", err)
 	}
 
-	// Return the initialized firebase app
 	return app, nil
 }

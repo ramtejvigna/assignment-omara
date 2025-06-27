@@ -22,11 +22,26 @@ func NewStorageService(bucketName string) *StorageService {
 		return &StorageService{bucketName: bucketName, client: nil}
 	}
 
-	client, err := storage.NewClient(context.Background())
+	// Create context with timeout for initialization
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Try to initialize GCS client with default credentials (works in Cloud Run)
+	client, err := storage.NewClient(ctx)
 	if err != nil {
-		fmt.Printf("Failed to initialize GCS client: %v\n", err)
-		fmt.Printf("Make sure GOOGLE_APPLICATION_CREDENTIALS is set or you're running in a GCP environment\n")
+		fmt.Printf("Failed to initialize GCS client with default credentials: %v\n", err)
+		fmt.Printf("This is expected in local development. In Cloud Run, make sure the service account has Storage permissions.\n")
 		// Return a storage service with the bucket name and nil client
+		return &StorageService{bucketName: bucketName, client: nil}
+	}
+
+	// Test bucket access
+	bucket := client.Bucket(bucketName)
+	_, err = bucket.Attrs(ctx)
+	if err != nil {
+		fmt.Printf("Warning: Cannot access GCS bucket '%s': %v\n", bucketName, err)
+		fmt.Printf("Storage service will be disabled. Check bucket name and permissions.\n")
+		client.Close()
 		return &StorageService{bucketName: bucketName, client: nil}
 	}
 

@@ -42,8 +42,7 @@ spec:
             secretKeyRef:
               name: backend-secrets
               key: FIREBASE_PROJECT_ID
-        - name: FIREBASE_CREDENTIALS_PATH
-          value: "firebase-credentials.json"
+        # Removed FIREBASE_CREDENTIALS_PATH - using default service account
         resources:
           limits:
             cpu: 1000m
