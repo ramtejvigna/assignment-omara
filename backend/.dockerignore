@@ -41,6 +41,9 @@ temp/
 .env.local
 .env.production
 
+# Firebase credentials (use default service account in Cloud Run)
+firebase-credentials.json
+
 # Git
 .git
 .gitignore
