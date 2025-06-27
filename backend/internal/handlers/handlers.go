@@ -58,6 +58,12 @@ func (h *Handlers) GetUserProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetDocuments(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -83,6 +89,12 @@ func (h *Handlers) GetDocuments(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) UploadDocument(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -149,6 +161,12 @@ func (h *Handlers) UploadDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetDocument(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -172,6 +190,12 @@ func (h *Handlers) GetDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -194,6 +218,12 @@ func (h *Handlers) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ReprocessDocument(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -217,6 +247,12 @@ func (h *Handlers) ReprocessDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetDocumentStatus(w http.ResponseWriter, r *http.Request) {
+	// Check if document service is available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -267,6 +303,12 @@ func (h *Handlers) GetDocumentStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) GetChatHistory(w http.ResponseWriter, r *http.Request) {
+	// Check if chat service is available
+	if h.chatService == nil {
+		http.Error(w, "Chat service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -299,6 +341,12 @@ func (h *Handlers) GetChatHistory(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
+	// Check if chat service is available
+	if h.chatService == nil {
+		http.Error(w, "Chat service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -335,6 +383,16 @@ func (h *Handlers) SendMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) CompareDocuments(w http.ResponseWriter, r *http.Request) {
+	// Check if both document and chat services are available
+	if h.documentService == nil {
+		http.Error(w, "Document service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	if h.chatService == nil {
+		http.Error(w, "Chat service is currently unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	userID, ok := h.ensureAuthenticated(w, r)
 	if !ok {
 		return
@@ -401,6 +459,16 @@ func (h *Handlers) ensureAuthenticated(w http.ResponseWriter, r *http.Request) (
 }
 
 func (h *Handlers) getOrCreateUser(ctx context.Context, userID string) (*models.User, error) {
+	// Check if database is available
+	if h.db == nil {
+		return nil, fmt.Errorf("database is not available")
+	}
+
+	// Check if auth client is available
+	if h.authClient == nil {
+		return nil, fmt.Errorf("authentication service is not available")
+	}
+
 	// Validate userID to prevent SQL injection or empty queries
 	if strings.TrimSpace(userID) == "" {
 		return nil, fmt.Errorf("userID cannot be empty")
