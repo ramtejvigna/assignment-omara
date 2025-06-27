@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"slices"
 	// "log"
 	"net/http"
 	"strings"
@@ -76,7 +77,14 @@ func AuthMiddleware(authClient *auth.Client) func(http.Handler) http.Handler {
 func CORSMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			// Check if the request origin is in our allowed origins
+			origin := r.Header.Get("Origin")
+			allowedOrigins := []string{"http://localhost:3000", "https://assignment-omara.vercel.app"}
+
+			if slices.Contains(allowedOrigins, origin) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+			}
+
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
