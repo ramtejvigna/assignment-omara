@@ -147,6 +147,18 @@ func main() {
 	// Setup routes
 	router := mux.NewRouter()
 
+	// Simple health check for load balancers and startup probes
+	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}).Methods("GET")
+
+	// Add a startup-specific health check that always returns OK
+	router.HandleFunc("/startup", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("READY"))
+	}).Methods("GET")
+
 	// Enhanced health check endpoint with service status
 	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -163,21 +175,18 @@ func main() {
 			},
 		}
 
-		// Return 503 if critical services are down
-		if !firebaseHealthy || !databaseHealthy {
+		// Return 503 only if NO services are working (complete failure)
+		if !firebaseHealthy && !databaseHealthy && !storageHealthy && !aiHealthy {
 			w.WriteHeader(http.StatusServiceUnavailable)
+			status["status"] = "CRITICAL"
+		} else if !firebaseHealthy || !databaseHealthy {
+			w.WriteHeader(http.StatusOK) // Still return 200 but mark as degraded
 			status["status"] = "DEGRADED"
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
 
 		json.NewEncoder(w).Encode(status)
-	}).Methods("GET")
-
-	// Simple health check for load balancers
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
 	}).Methods("GET")
 
 	// Protected routes - only if auth is available

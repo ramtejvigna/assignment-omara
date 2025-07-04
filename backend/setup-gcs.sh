@@ -22,17 +22,17 @@ echo "🔧 Setting up project: $PROJECT_ID"
 # Set the project
 gcloud config set project $PROJECT_ID
 
-# Enable required APIs
-echo "🔌 Enabling required APIs..."
-gcloud services enable storage.googleapis.com
-gcloud services enable firebase.googleapis.com
+# # Enable required APIs
+# echo "🔌 Enabling required APIs..."
+# gcloud services enable storage.googleapis.com
+# gcloud services enable firebase.googleapis.com
 
-# Create unique bucket name
-BUCKET_NAME="strategy-analyst-docs-$(date +%s)"
-echo "🪣 Creating storage bucket: $BUCKET_NAME"
+# # Create unique bucket name
+# BUCKET_NAME="strategy-analyst-docs-$(date +%s)"
+# echo "🪣 Creating storage bucket: $BUCKET_NAME"
 
-# Create bucket
-gcloud storage buckets create gs://$BUCKET_NAME --location=us-central1
+# # Create bucket
+# gcloud storage buckets create gs://$BUCKET_NAME --location=us-central1
 
 # Create service account
 echo "👤 Creating service account..."

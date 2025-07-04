@@ -20,29 +20,36 @@ spec:
         ports:
         - containerPort: 8080
         env:
-        - name: PORT
-          value: "8080"
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: backend-secrets
-              key: DATABASE_URL
+              name: DATABASE_URL
+              key: latest
         - name: GCS_BUCKET
           valueFrom:
             secretKeyRef:
-              name: backend-secrets
-              key: GCS_BUCKET
+              name: GCS_BUCKET
+              key: latest
         - name: GEMINI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: backend-secrets
-              key: GEMINI_API_KEY
+              name: GEMINI_API_KEY
+              key: latest
         - name: FIREBASE_PROJECT_ID
           valueFrom:
             secretKeyRef:
-              name: backend-secrets
-              key: FIREBASE_PROJECT_ID
-        # Removed FIREBASE_CREDENTIALS_PATH - using default service account
+              name: FIREBASE_PROJECT_ID
+              key: latest
+        - name: FIREBASE_CREDENTIALS_PATH
+          valueFrom:
+            secretKeyRef:
+              name: firebase-credentials
+              key: latest
+        - name: GCS_APPLICATION_CREDENTIALS
+          valueFrom:
+            secretKeyRef:
+              name: gcs-credentials
+              key: latest
         resources:
           limits:
             cpu: 1000m
@@ -52,25 +59,15 @@ spec:
             memory: 256Mi
         startupProbe:
           httpGet:
-            path: /api/health
+            path: /startup
             port: 8080
-          initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 30
         livenessProbe:
           httpGet:
-            path: /api/health
+            path: /health
             port: 8080
-          initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 10
           failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /api/health
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3 

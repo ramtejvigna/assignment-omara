@@ -1,48 +1,44 @@
 # Build stage
 FROM golang:1.24-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
 
-# Copy go mod files
+# Copy go mod files first for better caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+# Build statically linked binary
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o main .
 
-# Production stage
+# Final stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
+WORKDIR /app
+
+# Install runtime dependencies
 RUN apk --no-cache add ca-certificates tzdata
 
-WORKDIR /root/
-
-# Create non-root user first
-RUN adduser -D -s /bin/sh appuser
+# Create non-root user and group
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup
 
 # Copy the binary from builder stage
-COPY --from=builder /app/main .
+COPY --from=builder --chown=appuser:appgroup /app/main .
 
-# Set proper permissions
-RUN chmod +x main && chown appuser:appuser main
+# Ensure the binary is executable
+RUN chmod +x main
 
+# Drop privileges
 USER appuser
 
-# Expose port
-EXPOSE 8080
-
-# Set default PORT environment variable
+# Cloud Run requires this port to be set via PORT env variable
 ENV PORT=8080
 
-# Run the application
-CMD ["./main"] 
+# Important: Use exec form for proper signal handling
+CMD ["./main"]
