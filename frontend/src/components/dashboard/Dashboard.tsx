@@ -163,8 +163,6 @@ export function Dashboard() {
   // Calculate statistics
   const totalDocuments = documents?.length || 0
   const processingDocuments = 0 // Mock value since status doesn't exist on Document type
-  const completedDocuments = totalDocuments - processingDocuments
-  const insightsGenerated = totalDocuments * 3 // Mock calculation
 
   if (loading) {
     return (
@@ -342,26 +340,6 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <CardTitle>Document Library</CardTitle>
                     <div className="flex items-center gap-2">
-                      <Select value={sortBy} onValueChange={setSortBy}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="recent">Recent</SelectItem>
-                          <SelectItem value="name">Name</SelectItem>
-                          <SelectItem value="size">Size</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={filterBy} onValueChange={setFilterBy}>
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Types</SelectItem>
-                          <SelectItem value="pdf">PDF</SelectItem>
-                          <SelectItem value="txt">Text</SelectItem>
-                        </SelectContent>
-                      </Select>
                       <Button onClick={() => setShowUpload(true)}>
                         <Plus className="h-4 w-4 mr-2" />
                         Upload
